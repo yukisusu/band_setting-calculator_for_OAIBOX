@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>OAIBOX 5G NR Band Setting Calculator (n77, n78, n79)</title>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root { --primary: #111987; --secondary: #f0f4f8; --accent: #e63946; --status-ok: #2e7d32; --status-ng: #d32f2f; --white: #fff; --grey: #888; }
+        body { font-family: "Segoe UI", "Meiryo", sans-serif; line-height: 1.4; background-color: var(--white); color: #333; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .app-container { background: var(--white); border: 1px solid var(--grey); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        /* タイトル部分 */
+        .header { background: var(--primary); color: var(--white); padding: 15px; text-align: center; }
+        .header h1 { margin: 0; font-size: 1.3rem; }
+        .content { padding: 25px; }
+        /* 設定ブロック */
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; background: var(--white); padding: 15px; border: 1px solid var(--grey); border-radius: 8px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; font-size: 0.85rem; color: var(--grey); }
+        select, input { padding: 10px; border: 1px solid var(--grey); border-radius: 6px; background: var(--white); font-size: 0.95rem; }
+        .error-msg { color: var(--accent); font-weight: bold; font-size: 0.8em; margin-top: 5px; height: 1em; }
+
+        /* 計算式ブロック */
+        .formula-box { margin: 15px 0 15px 0; background: var(--white); padding: 10px; border: 1px solid var(--primary); border-radius: 8px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+
+        .result-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .res-card { background: var(--secondary); padding: 15px; border-radius: 8px; border: 1px solid var(--secondary); }
+        /* 計算結果ブロック */
+        .table-header { border-left: 5px solid var(--primary); padding-left: 10px; margin-bottom: 10px; color: var(--primary); font-size: 1.1rem; }
+        .plot-header { border-left: 5px solid var(--primary); padding-left: 10px; margin-bottom: 10px; color: var(--primary); font-size: 1.1rem; }
+        .result-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; }
+        .result-table th, .result-table td { padding: 10px; border-bottom: 1px solid var(--secondary); text-align: left; background: var(--white); }
+        .result-table th { font-weight: normal; width: 33.33%; box-sizing: border-box;}
+        .text-grey {color: var(--grey) !important; font-size: 0.85rem;}
+        .text-highlight-red {color: var(--accent) !important; font-size: 1.2rem !important; font-weight: bold;}
+        .val-cell { font-family: monospace; font-size: 1.05em; color: var(--primary); }
+
+        /* 設定イメージ */
+        /* .visual-area { flex: 0.8; background-color: var(--white); border: 1px solid var(--grey); border-radius: 8px; padding: 10px; text-align: center; }
+        canvas { background: var(--white); border: 1px solid var(--white); margin-top: 5px; width: 100%; height: 240px; } */
+        .visual-area { 
+            flex: 1; 
+            background-color: #f8f9fa; 
+            border: 1px solid #dee2e6; 
+            border-radius: 8px; 
+            padding: 15px; 
+        }
+        canvas { 
+            background: #ffffff; 
+            border-radius: 4px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+            width: 300px; 
+            height: 320px; 
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* GSCN選択部分 */
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; color: var(--white); margin-left: 10px; }
+        .status-ok { background-color: var(--status-ok); }
+        .status-ng { background-color: var(--status-ng); }
+        .gscn-row { margin-top: 15px; display: flex; align-items: center; gap: 10px; font-size: 0.95em; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header"><h1>OAIBOX 5G NR 周波数設定計算機 (n77, n78, n79)</h1></div>
+    <div class="content">
+        <div class="settings-grid">
+            <div class="control-group">
+                <label>5Gバンド</label>
+                <select id="band" onchange="calculate()">
+                    <option value="77">n77 (3300 - 4200 MHz)</option>
+                    <option value="78">n78 (3300 - 3800 MHz)</option>
+                    <option value="79" selected>n79 (4400 - 5000 MHz)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>中心周波数 (MHz)</label>
+                <input type="number" id="centerFreq" value="4750" step="0.01" oninput="calculate()">
+                <div id="centerFreqError" class="error-msg"></div>
+            </div>
+            <div class="control-group">
+                <label>帯域幅 (MHz)</label>
+                <select id="bandwidth" onchange="calculate()">
+                    <option value="20">20 MHz (51 RB)</option>
+                    <option value="40">40 MHz (106 RB)</option>
+                    <option value="50">50 MHz (133 RB)</option>
+                    <option value="60">60 MHz (162 RB)</option>
+                    <option value="80">80 MHz (217 RB)</option>
+                    <option value="100" selected>100 MHz (273 RB)</option>
+                </select>
+                <div id="bandwidthError" class="error-msg"></div>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <div style="text-align: center; font-size: 0.9em; color: var(--grey);">
+                3GPP TS 38.104 Table 5.4.2.1-1 (3000-24250MHz)
+            </div>
+            <div>
+                $$ \text{ARFCN} = 600000 + \frac{\text{Frequency [MHz]} - 3000 \text{ [MHz]}}{0.015 \text{ [MHz]}} $$
+            </div>
+
+            <br>
+            <div style="text-align: center; font-size: 0.9em; color: var(--grey);">
+                3GPP TS 38.104 Table 5.4.3.1-1 (3000-24250MHz)
+            </div>
+            <div>
+                $$ \text{GSCN} = 7499 + \frac{\text{Frequency [MHz]} - 3000 \text{ [MHz]}}{1.44 \text{ [MHz]}} $$
+            </div>
+        </div>
+
+        <div class="result-panel">
+            <div class="res-card">
+                <h3 class="table-header">計算結果</h3>
+                <table class="result-table">
+                    <thead>
+                        <tr><th>項目</th><th>周波数 [MHz]</th><th>ARFCN</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="label-cell">中心周波数</td>
+                            <td id="resCenterFreq" class="val-cell text-grey">-</td>
+                            <td id="resCenterARFCN" class="val-cell text-grey">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">SSB</td>
+                            <td id="resSSBFreq" class="val-cell text-grey">-</td>
+                            <td id="resSSBARFCN" class="val-cell text-highlight-red">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">PointA</td>
+                            <td id="resPointAFreq" class="val-cell text-grey">-</td>
+                            <td id="resPointAARFCN" class="val-cell text-highlight-red">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="gscn-row">
+                    <label>SSB GSCN (ARFCN) 選択:</label>
+                    <select id="gscnSelect" onchange="calculate()"></select>
+                    <span id="bandStatus" class="status-badge"></span>
+                </div>
+
+                <h3 style="border-left: 5px solid var(--grey); padding-left: 10px; margin-bottom: 15px; color: #333; font-size: 1.1rem;">前提条件</h3>
+                <ul style="font-size: 0.85rem; color: #444; padding-left: 20px; line-height: 1.7;">
+                    <li>5Gバンド n77, n78, n79および、SCS 30kHz運用を想定しています。</li>
+                    <li>ARFCNは30kHzグリッド整合（2の倍数）に自動調整されます。</li>
+                    <li>CORESET#0設定（OAI実装の制限により、シンボル数1を採用）
+                        <ul style="padding-left: 20px; list-style-type: disc;">
+                            <li>n77/n78: Index 10 (48RB, Symbol 1, Offset 12)</li>
+                            <li>n79: Index 5 (48RB, Symbol 1, Offset 28)</li>
+                        </ul>
+                    </li>
+                    <li>OAI実装の制限により使用できない場合があります。</li>
+                </ul>
+            </div>
+            <div class="res-card">
+                <h3 class="plot-header">GSCN確認画面</h3>
+                <div class="visual-area">
+                        <div style="margin-bottom: 5px; font-size: 0.9em; font-weight: bold;">周波数領域配置イメージ</div>
+                        <canvas id="vizCanvas" width="300" height="240"></canvas>
+                        <div id="vizLegend" style="font-size: 0.75em; margin-top: 8px; text-align: left; line-height: 1.3;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SCS = 30; // kHz
+    const subcarriersPerRB = 12;
+    const globalchannelraster = 0.015; // MHz
+    // 3GPP TS 38.104 Table 5.3.2-1 (SCS 30kHz)
+    const rbTable = { "20": 51, "40": 106, "50": 133, "60": 162, "80": 217, "100": 273 };
+    // 3GPP TS 38.104 Table 5.3.3-1 (SCS 30kHz)
+    const guardTable = { "20": 0.805, "40": 0.905, "50": 1.045, "60": 0.825, "80": 0.925, "100": 0.845 };
+    // 3GPP TS 38.104 Table 5.2-1, TS 38.101-1 Table 5.2-1, TS 38.213 Table 13-4, 13-6
+    const bandsinfo = {
+        "77": { min: 3300, max: 4200, coresetIndex: 10, coresetNRB: 48, offset: 12 },
+        "78": { min: 3300, max: 3800, coresetIndex: 10, coresetNRB: 48, offset: 12 },
+        "79": { min: 4400, max: 5000, coresetIndex: 5, coresetNRB: 48, offset: 28 }
+    };
+
+    function calculate() {
+        const band = document.getElementById("band").value;
+        const centerFreq = parseFloat(document.getElementById("centerFreq").value);
+        const bw = document.getElementById("bandwidth").value;
+        const nrb = rbTable[bw];
+        const guard = guardTable[bw];
+        const bandinfo = bandsinfo[band];
+
+        const error_freq = document.getElementById("centerFreqError");
+        if (centerFreq < bandinfo.min || centerFreq > bandinfo.max) {
+            error_freq.innerText = `バンドの周波数範囲外です。`;
+            return;
+        } else { error_freq.innerText = ""; }
+
+        const error_bw = document.getElementById("bandwidthError");
+        if (centerFreq - (nrb* subcarriersPerRB * SCS) / 1000 / 2 - guard < bandinfo.min || centerFreq + (nrb* subcarriersPerRB * SCS) / 1000 / 2 + guard > bandinfo.max) {
+            error_bw.innerText = `バンドの周波数範囲外です。`;
+            return;
+        } else { error_bw.innerText = ""; }
+
+        let centerARFCN = Math.round((centerFreq - 3000) / globalchannelraster) + 600000;
+        if (centerARFCN % 2 !== 0) centerARFCN -= 1;
+        const finalCenterFreq = 3000 + (centerARFCN - 600000) * globalchannelraster;
+
+        const pointA_ARFCN = centerARFCN - (nrb * subcarriersPerRB * SCS / (2 * 15));
+        const pointAFreq = 3000 + (pointA_ARFCN - 600000) * globalchannelraster;
+
+        document.getElementById("resCenterFreq").innerText = finalCenterFreq.toFixed(3);
+        document.getElementById("resCenterARFCN").innerText = centerARFCN;
+        document.getElementById("resPointAFreq").innerText = pointAFreq.toFixed(3);
+        document.getElementById("resPointAARFCN").innerText = pointA_ARFCN;
+
+        const gscnSelect = document.getElementById("gscnSelect");
+        const currentGscn = gscnSelect.value;
+        gscnSelect.innerHTML = "";
+
+        const bwFreq = nrb * subcarriersPerRB * SCS / 1000;
+        const upperLimitFreq = pointAFreq + bwFreq;
+
+        // GSCNの範囲（222555 - 7499 = 14756）
+        for (let n = 0; n < 14757; n++) {
+            const ssbFreq = 3000 + n * 1.44;
+            if (ssbFreq > pointAFreq && ssbFreq < upperLimitFreq) {
+                const gscn = 7499 + n;
+                const ssbARFCN = 600000 + Math.round((ssbFreq - 3000) / globalchannelraster);
+                const opt = document.createElement("option");
+                opt.value = gscn;
+                opt.text = `${gscn} (${ssbARFCN})`;
+                if (gscn == currentGscn) opt.selected = true;
+                gscnSelect.appendChild(opt);
+            }
+        }
+
+        const selectedGscn = parseInt(gscnSelect.value);
+        if (!isNaN(selectedGscn)) {
+            const ssbFreq = 3000 + (selectedGscn - 7499) * 1.44;
+            const ssbARFCN = 600000 + (ssbFreq - 3000) / globalchannelraster;
+            document.getElementById("resSSBFreq").innerText = ssbFreq.toFixed(2);
+            document.getElementById("resSSBARFCN").innerText = ssbARFCN;
+            drawVisualization(pointAFreq, upperLimitFreq, ssbFreq, bandinfo.coresetNRB, bandinfo.offset);
+        }
+    }
+
+    function drawVisualization(pointA, upperLimit, ssbCenter, coresetNRB, coresetOffsetRB) {
+        const canvas = document.getElementById("vizCanvas");
+        const ctx = canvas.getContext("2d");
+        const legend = document.getElementById("vizLegend");
+        const badge = document.getElementById("bandStatus");
+
+        const dpr = window.devicePixelRatio || 1;
+        const logicalWidth = 300;
+        const logicalHeight = 320;
+        // 内部の解像度（バッファ）をデバイスピクセル比に合わせて拡大
+        canvas.width = logicalWidth * dpr;
+        canvas.height = logicalHeight * dpr;
+        // 表示上のサイズは論理ピクセルで固定
+        canvas.style.width = logicalWidth + "px";
+        canvas.style.height = logicalHeight + "px";
+        ctx.scale(dpr, dpr);
+
+        // テキストのレンダリング品質を向上させる設定
+        ctx.textBaseline = "middle";
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+
+        ctx.clearRect(0, 0, logicalWidth, logicalHeight);
+
+        // 周波数計算
+        const ssbLow = ssbCenter - 3.6;
+        const ssbHigh = ssbCenter + 3.6;
+        const rbWidthMHz = (SCS * subcarriersPerRB) / 1000;
+        const coresetLow = ssbLow - (coresetOffsetRB * rbWidthMHz);
+        const coresetHigh = coresetLow + (coresetNRB * rbWidthMHz);
+
+        // 表示範囲の正規化 (システム帯域の上下に20%の余白を持たせる)
+        const bwSize = upperLimit - pointA;
+        const viewMin = pointA - bwSize * 0.2;
+        const viewMax = upperLimit + bwSize * 0.2;
+        const viewSpan = viewMax - viewMin;
+
+        const marginY = 40;
+        const chartHeight = logicalHeight - marginY * 2;
+        const toY = (freq) => logicalHeight - marginY - ((freq - viewMin) / viewSpan) * chartHeight;
+
+        // --- 1. 背景とガイドライン ---
+        ctx.font = "10px 'Segoe UI', sans-serif";
+
+        const drawHLine = (freq, label, color, dash = []) => {
+            const y = toY(freq);
+            ctx.setLineDash(dash);
+            ctx.strokeStyle = color;
+            ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(280, y); ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.textAlign = "right";
+            ctx.fillText(label, 45, y + 3);
+        };
+
+        // 軸描画
+        ctx.strokeStyle = "#333";
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(50, 20); ctx.lineTo(50, logicalHeight - 20); ctx.stroke();
+        // 軸の矢印
+        ctx.beginPath(); ctx.moveTo(46, 25); ctx.lineTo(50, 15); ctx.lineTo(54, 25); ctx.stroke();
+        ctx.save();
+        ctx.translate(15, 35);
+        ctx.fillText("Freq (MHz)", 50, -10);
+        ctx.restore();
+
+        // --- 2. システム帯域 (グレー背景) ---
+        const yTop = toY(upperLimit);
+        const yBottom = toY(pointA);
+        ctx.fillStyle = "#f1f3f5";
+        ctx.fillRect(60, yTop, 210, yBottom - yTop);
+        ctx.strokeStyle = "#adb5bd";
+        ctx.setLineDash([4, 2]);
+        ctx.strokeRect(60, yTop, 210, yBottom - yTop);
+
+        drawHLine(pointA, pointA.toFixed(1), "#666");
+        drawHLine(upperLimit, upperLimit.toFixed(1), "#666");
+
+        // --- 3. SSB (Green) ---
+        const ySsbT = toY(ssbHigh);
+        const ySsbB = toY(ssbLow);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(46, 125, 50, 0.15)";
+        ctx.fillRect(70, ySsbT, 90, ySsbB - ySsbT);
+        ctx.strokeStyle = "#2e7d32";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(70, ySsbT, 90, ySsbB - ySsbT);
+
+        ctx.fillStyle = "#2e7d32";
+        ctx.textAlign = "center";
+        ctx.font = "bold 10px sans-serif";
+        ctx.fillText("SSB", 115, ySsbT + (ySsbB - ySsbT)/2);
+
+        // --- 4. CORESET#0 (Blue) ---
+        const yCoreT = toY(coresetHigh);
+        const yCoreB = toY(coresetLow);
+        ctx.fillStyle = "rgba(17, 25, 135, 0.1)";
+        ctx.fillRect(170, yCoreT, 90, yCoreB - yCoreT);
+        ctx.strokeStyle = "#111987";
+        ctx.strokeRect(170, yCoreT, 90, yCoreB - yCoreT);
+
+        ctx.fillStyle = "#111987";
+        ctx.fillText("CORESET#0", 215, yCoreT + (yCoreB - yCoreT)/2);
+
+        // 判定とバッジ更新
+        const isSsbOk = ssbLow >= pointA && ssbHigh <= upperLimit;
+        const isCoresetOk = coresetLow >= pointA && coresetHigh <= upperLimit;
+
+        if (isSsbOk && isCoresetOk) {
+            badge.innerText = "OK";
+            badge.className = "status-badge status-ok";
+        } else {
+            badge.innerText = "NG(帯域外)";
+            badge.className = "status-badge status-ng";
+        }
+
+        legend.innerHTML = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #eee;">
+                <div><span style="color:#2e7d32">■</span> SSB: ${ssbLow.toFixed(2)} - ${ssbHigh.toFixed(2)}</div>
+                <div><span style="color:#111987">■</span> CORESET#0: ${coresetLow.toFixed(2)} - ${coresetHigh.toFixed(2)}</div>
+                <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 5px;">
+                    <span style="color:#666">■</span> システム帯域: ${pointA.toFixed(2)} - ${upperLimit.toFixed(2)}
+                </div>
+            </div>
+        `;
+    }
+
+    window.onload = calculate;
+</script>
+</body>
+</html>
