@@ -1,0 +1,2 @@
+# band_setting-calculator_for_OAIBOX
+OAIBOXのための周波数設定計算機
