@@ -86,7 +86,7 @@
 
         <div class="result-panel">
             <div class="res-card">
-                <h3 class="section-title">Results</h3>
+                <h3 class="section-title">計算結果</h3>
                 <table class="result-table">
                     <thead>
                         <tr><th></th><th>Frequency</th><th>ARFCN</th></tr>
@@ -129,7 +129,7 @@
                 </ul>
             </div>
             <div class="res-card">
-                <h3 class="section-title">Visualizer</h3>
+                <h3 class="section-title">GSCN確認画面</h3>
                 <div class="visual-area">
                     <canvas id="vizCanvas" width="300" height="240"></canvas>
                     <div id="vizLegend" style="font-size: 0.7rem; margin-top: 10px; text-align: left;"></div>
@@ -246,6 +246,16 @@
         const viewSpan = viewMax - viewMin;
         const toY = (freq) => 280 - ((freq - viewMin) / viewSpan) * 240;
 
+        const drawHLine = (freq, label, color, dash = [4, 2]) => {
+            const y = toY(freq);
+            ctx.setLineDash(dash);
+            ctx.strokeStyle = color;
+            ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(280, y); ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.textAlign = "right";
+            ctx.fillText(label, 45, y + 3);
+        };
+
         // Base Line
         // 軸描画
         ctx.strokeStyle = "#333";
@@ -253,6 +263,9 @@
         ctx.moveTo(50, 20);
         ctx.lineTo(50, 300);
         ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(46, 25); ctx.lineTo(50, 15); ctx.lineTo(54, 25); ctx.stroke();
+        ctx.fillText("Freq (MHz)", 30, 10);
+        ctx.restore();
 
         // システム帯域 (Grey)
         ctx.fillStyle = "#f1f3f5";
@@ -260,6 +273,10 @@
         ctx.strokeStyle = "#ccc";
         ctx.setLineDash([4, 2]);
         ctx.strokeRect(60, toY(upperLimit), 210, toY(pointA) - toY(upperLimit));
+
+        drawHLine(pointA, pointA.toFixed(2), "#666");
+        drawHLine(upperLimit, upperLimit.toFixed(2), "#666");
+
 
         // SSB (Green)
         ctx.setLineDash([]);
@@ -279,9 +296,9 @@
         badge.className = isOk ? "status-badge status-ok" : "status-badge status-ng";
 
         legend.innerHTML = `<div style="padding:10px; background:#fff; border:1px solid #eee;">
+            <span style="color:#ccc">■</span> Band: ${pointA.toFixed(2)}-${upperLimit.toFixed(2)}<br>
             <span style="color:#2e7d32">■</span> SSB: ${ssbLow.toFixed(2)}-${ssbHigh.toFixed(2)}<br>
-            <span style="color:#111987">■</span> CORESET#0: ${coresetLow.toFixed(2)}-${coresetHigh.toFixed(2)}<br>
-            <span style="color:#ccc">■</span> Band: ${pointA.toFixed(2)}-${upperLimit.toFixed(2)}</div>`;
+            <span style="color:#111987">■</span> CORESET#0: ${coresetLow.toFixed(2)}-${coresetHigh.toFixed(2)}</div>`;
     }
 
     window.onload = calculate;
