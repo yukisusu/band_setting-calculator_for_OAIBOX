@@ -195,7 +195,11 @@
 
         // GSCNの範囲 @3000-24250MHz（222555 - 7499 = 14756）
         // 帯域内のものだけに絞り込み
-        for (let n = 0; n < 14757; n++) {
+        // 3GPP Release 16 TS 38.101-1 Table 5.4.3.3-1
+        // GSCN step -> n77, n78: 1, n79: 16
+        let gscnStep = 1;
+        if (band === "79") gscnStep = 16;
+        for (let n = 0; n < 14757; n += gscnStep) {
             const ssbFreq = 3000 + n * 1.44;
             if (ssbFreq > pointAFreq && ssbFreq < upperLimitFreq) {
                 const gscn = 7499 + n;
