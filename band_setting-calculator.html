@@ -197,9 +197,17 @@
         // 帯域内のものだけに絞り込み
         // 3GPP Release 16 TS 38.101-1 Table 5.4.3.3-1
         // GSCN step -> n77, n78: 1, n79: 16
+        // GSCN range -> n77: 7711-8329, n78: 7711-8051, n79: 8480-8880
         let gscnStep = 1;
-        if (band === "79") gscnStep = 16;
-        for (let n = 0; n < 14757; n += gscnStep) {
+        let gscnStart = 7711 - 7499;
+        let gscnEnd = 8329 - 7499;
+        if (band === "78") gscnEnd = 8051 - 7499;
+        if (band === "79") {
+            gscnStep = 16;
+            gscnStart = 8480 - 7499;
+            gscnEnd = 8880 - 7499;
+        }
+        for (let n = gscnStart; n <= gscnEnd; n += gscnStep) {
             const ssbFreq = 3000 + n * 1.44;
             if (ssbFreq > pointAFreq && ssbFreq < upperLimitFreq) {
                 const gscn = 7499 + n;
